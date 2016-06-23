@@ -3,16 +3,16 @@
  */
 package com.github.antennaesdk.ws;
 
+import com.google.gson.Gson;
 import org.antennae.common.messages.ClientMessage;
-import org.antennae.common.messages.ServerTrackedMessage;
-import org.glassfish.tyrus.client.ClientManager;
+import org.antennae.common.messages.ClientMessageWrapper;
+import org.antennae.common.messages.ServerMessageWrapper;
 
+import javax.websocket.*;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Calendar;
 import java.util.Date;
-import javax.websocket.*;
 
 @ClientEndpoint
 public class WebSocketMessageProcessor {
@@ -30,24 +30,35 @@ public class WebSocketMessageProcessor {
 
         if( m != null ){
 
-            ServerTrackedMessage message = ServerTrackedMessage.fromJson(m);
+            ServerMessageWrapper serverMessageWrapper = ServerMessageWrapper.fromJson(m);
 
+            ClientMessageWrapper clientMessageWrapper = new ClientMessageWrapper();
             ClientMessage clientMessage = new ClientMessage();
-            clientMessage.setTo( message.getServerMessage().getFrom());
+            clientMessage.setTo( serverMessageWrapper.getServerMessage().getFrom());
 
-            String payload = message.getServerMessage().getPayLoad();
-            long time = Calendar.getInstance().getTimeInMillis();
-            Date date = new Date(time);
+            String payload = serverMessageWrapper.getServerMessage().getPayLoad();
 
-            String newPayload = payload + "; time =" + date.toString();
-            clientMessage.setPayLoad( newPayload );
+            clientMessage.setPayLoad( doBuzinezzLogic(payload) );
 
-            message.setClientMessage(clientMessage);
+            clientMessageWrapper.setClientMessage(clientMessage);
+            clientMessageWrapper.setSessionId( serverMessageWrapper.getSessionId());
+            clientMessageWrapper.setNodeId( serverMessageWrapper.getNodeId() );
 
             if( session != null && session.isOpen() ){
-                session.getAsyncRemote().sendText( message.toJson() );
+                session.getAsyncRemote().sendText( clientMessageWrapper.toJson() );
             }
         }
+    }
+
+    public String doBuzinezzLogic( String payLoad ){
+        Message m = Message.fromJson(payLoad);
+
+        long time = Calendar.getInstance().getTimeInMillis();
+        Date date = new Date(time);
+
+        m.body.text = m.body.text + " : " + date.toString();
+
+        return m.toJson();
     }
 
     @OnMessage
@@ -60,6 +71,7 @@ public class WebSocketMessageProcessor {
     @OnOpen
     public void onOpen(Session session, EndpointConfig config){
         System.out.println("session opened :" + session.getId() );
+        this.session = session;
     }
 
     @OnClose
@@ -73,7 +85,7 @@ public class WebSocketMessageProcessor {
     public void connect(){
 
         try {
-            session = container.connectToServer(WebSocketMessageProcessor.class, URI.create("ws://localhost:8080/server"));
+            container.connectToServer(WebSocketMessageProcessor.class, URI.create("ws://localhost:8080/server"));
         } catch (DeploymentException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -137,6 +149,43 @@ public class WebSocketMessageProcessor {
         public void onClose(Session session, CloseReason closeReason) {
         }
         public void onError(Session session, Throwable thr) {
+        }
+    }
+
+    /*
+    {
+  "id": "123e4567-e89b-12d3-a456-426655440013",
+  "type": "TEXT",
+  "version": "1",
+  "sender": {
+  "username": "N1"
+  },
+  "body": {
+    "text": "Thanks for call me, Dave!"
+   }
+}
+     */
+    public static class Message{
+        String id;
+        String type;
+        String version;
+        String sender;
+        String username;
+        Body body;
+
+        public static class Body{
+            String text;
+        }
+
+        public String toJson(){
+            Gson gson = new Gson();
+            String result = gson.toJson(this);
+            return result;
+        }
+        public static Message fromJson( String json ){
+            Gson gson = new Gson();
+            Message message = gson.fromJson( json, Message.class);
+            return message;
         }
     }
 }

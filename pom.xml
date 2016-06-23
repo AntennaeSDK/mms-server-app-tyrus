@@ -21,7 +21,7 @@
         <dependency>
             <groupId>org.antennae.common</groupId>
             <artifactId>server-api</artifactId>
-            <version>0.1.2</version>
+            <version>0.1.4</version>
         </dependency>
 
 	</dependencies>
