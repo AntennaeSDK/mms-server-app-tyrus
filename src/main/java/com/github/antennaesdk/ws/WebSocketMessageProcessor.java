@@ -54,7 +54,7 @@ public class WebSocketMessageProcessor {
     public String doBuzinezzLogic( String payLoad ){
         Message m = Message.fromJson(payLoad);
 
-        m.body.text = "echo from: " + m.body.text + " : \n" + MicroTimestamp.INSTANCE.getMillis();
+        m.body.text = "echo from: " + m.body.text + " : \n" + MicroTimestamp.INSTANCE.get();
 
         return m.toJson();
     }
