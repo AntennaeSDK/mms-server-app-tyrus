@@ -11,6 +11,7 @@ import org.antennae.common.messages.ServerMessageWrapper;
 import javax.websocket.*;
 import java.io.IOException;
 import java.net.URI;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -53,10 +54,7 @@ public class WebSocketMessageProcessor {
     public String doBuzinezzLogic( String payLoad ){
         Message m = Message.fromJson(payLoad);
 
-        long time = Calendar.getInstance().getTimeInMillis();
-        Date date = new Date(time);
-
-        m.body.text = m.body.text + " : " + date.toString();
+        m.body.text = "echo from: " + m.body.text + " : \n" + MicroTimestamp.INSTANCE.getMillis();
 
         return m.toJson();
     }
@@ -154,16 +152,16 @@ public class WebSocketMessageProcessor {
 
     /*
     {
-  "id": "123e4567-e89b-12d3-a456-426655440013",
-  "type": "TEXT",
-  "version": "1",
-  "sender": {
-  "username": "N1"
-  },
-  "body": {
-    "text": "Thanks for call me, Dave!"
-   }
-}
+      "id": "123e4567-e89b-12d3-a456-426655440013",
+      "type": "TEXT",
+      "version": "1",
+      "sender": {
+      "username": "N1"
+      },
+      "body": {
+        "text": "Thanks for call me, Dave!"
+       }
+    }
      */
     public static class Message{
         String id;
@@ -186,6 +184,33 @@ public class WebSocketMessageProcessor {
             Gson gson = new Gson();
             Message message = gson.fromJson( json, Message.class);
             return message;
+        }
+    }
+
+    /**
+     * Class to generate timestamps with microsecond precision
+     * For example: MicroTimestamp.INSTANCE.get() = "2012-10-21 19:13:45.267128"
+     */
+    public enum MicroTimestamp
+    {  INSTANCE ;
+
+        private long              startDate ;
+        private long              startNanoseconds ;
+        private SimpleDateFormat  dateFormat ;
+
+        private MicroTimestamp()
+        {  this.startDate = System.currentTimeMillis() ;
+            this.startNanoseconds = System.nanoTime() ;
+            this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS") ;
+        }
+
+        public String get()
+        {  long microSeconds = (System.nanoTime() - this.startNanoseconds) / 1000 ;
+            long date = this.startDate + (microSeconds/1000) ;
+            return this.dateFormat.format(date) + String.format("%03d", microSeconds % 1000) ;
+        }
+        public String getMillis(){
+            return this.dateFormat.format(startDate);
         }
     }
 }
